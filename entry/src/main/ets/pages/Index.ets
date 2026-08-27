@@ -5,9 +5,10 @@ import { Game } from '../model/game';
 import { GameListModel } from '../viewModel/gameList';
 import { PermissionUtil } from '../utils/PermissionUtil';
 import { Permissions } from '@ohos.privacyManager';
-import { UIContext } from '@kit.ArkUI';
+import { display, UIContext } from '@kit.ArkUI';
 import { GlobalContext } from '../utils/GlobalContext';
 import { CommonConstants } from '../common/CommonConstants';
+import { Logger } from '../utils/Logger';
 
 @Entry
 @Component
@@ -50,6 +51,7 @@ struct Index {
         current.setPreferredOrientation(window.Orientation.PORTRAIT);
       }
     });
+    this.setDisplay()
   }
 
   aboutToAppear(): void {
@@ -63,6 +65,26 @@ struct Index {
       this.navPath.pushPath({ name: CommonConstants.ROUTER_GAME, param: game });
     } catch (error) {
       console.error('页面跳转失败:', error);
+    }
+  }
+
+  private setDisplay() {
+    let displayClass: display.Display | null = null;
+    try {
+      displayClass = display.getDefaultDisplaySync();
+      let orientation = displayClass.orientation;
+      if (orientation != display.Orientation.LANDSCAPE) {
+        window.getLastWindow(this.context).then((windowClass) => {
+          let orientation = window.Orientation.PORTRAIT;
+          windowClass.setPreferredOrientation(orientation).catch((err: BusinessError) => {
+            Logger.error(`setPreferredOrientation：${JSON.stringify(err)}`);
+          });
+        }).catch((err: BusinessError) => {
+          Logger.error(`getLastWindow：${JSON.stringify(err)}`);
+        });
+      }
+    } catch (exception) {
+      console.error(`Failed to get default display. Code: ${exception.code}, message: ${exception.message}`);
     }
   }
 

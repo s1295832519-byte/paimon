@@ -1,9 +1,10 @@
 import webview from '@ohos.web.webview';
-import window from '@ohos.window';
 import deviceInfo from '@ohos.deviceInfo';
 import { BusinessError } from '@ohos.base';
 import { MobileUserAgent, PCUserAgent } from '../common';
 import { Game } from '../model/game';
+import { display, window } from '@kit.ArkUI';
+import { Logger } from '../utils/Logger';
 
 const LOAD_TIMEOUT: number = 10000;
 
@@ -14,7 +15,6 @@ struct GamePage {
   @State errorMessage: string = '';
   @State game: Game = {} as Game;
   @State webViewReady: boolean = false;
-
   private navPathStack: NavPathStack = new NavPathStack();
   private loadTimer: number = 0;
   private context: Context | undefined = this.getUIContext().getHostContext();
@@ -31,6 +31,7 @@ struct GamePage {
     }
     this.enterGameWindow();
     this.startLoadTimeout();
+    this.setDisplayLANDSCAPE();
     console.info('游戏页面初始化完成:', this.game.name, this.game.url);
   }
 
@@ -98,6 +99,26 @@ struct GamePage {
     return true;
   }
 
+  private setDisplayLANDSCAPE() {
+    let displayClass: display.Display | null = null;
+    try {
+      displayClass = display.getDefaultDisplaySync();
+      let orientation = displayClass.orientation;
+      if (orientation != display.Orientation.LANDSCAPE) {
+        window.getLastWindow(this.context).then((windowClass) => {
+          let orientation = window.Orientation.LANDSCAPE;
+          windowClass.setPreferredOrientation(orientation).catch((err: BusinessError) => {
+            Logger.error(`setPreferredOrientation：${JSON.stringify(err)}`);
+          });
+        }).catch((err: BusinessError) => {
+          Logger.error(`getLastWindow：${JSON.stringify(err)}`);
+        });
+      }
+    } catch (exception) {
+      console.error(`Failed to get default display. Code: ${exception.code}, message: ${exception.message}`);
+    }
+  }
+
   build() {
     NavDestination() {
       Stack() {
@@ -154,6 +175,7 @@ struct GamePage {
       .width('100%')
       .height('100%');
     }
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
     .hideTitleBar(true)
     .onReady((context: NavDestinationContext) => this.initializeDestination(context))
     .onBackPressed(() => this.leaveGame())
@@ -166,6 +188,6 @@ struct GamePage {
 
 
 @Builder
-export function GamePageBuilder(){
-  GamePage()
+export function GamePageBuilder() {
+  GamePage();
 }
