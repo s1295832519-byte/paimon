@@ -4,23 +4,24 @@
       {
         "name": "default",
         "material": {
-          "storePassword": "000000200D47122DBF5E1F7A879D84308304346C1F6A0290BBF19255FF4D67F68873E3F49D695F470F1C9EEBB496EDD0",
-          "certpath": "/storage/Users/currentUser/appdata/el2/base/com.huawei.devecostudio/files/ohos/config/default_paimontXi11CL6m5_f7JzJg8C0lyzvy3lDCDvCkQiUPeUvsSY.cer",
-          "keyAlias": "debugKey",
-          "keyPassword": "000000200D47122DBF5E1F7A879D84308304346C1F6A0290BBF19255FF4D67F68873E3F49D695F470F1C9EEBB496EDD0",
-          "profile": "/storage/Users/currentUser/appdata/el2/base/com.huawei.devecostudio/files/ohos/config/default_paimontXi11CL6m5_f7JzJg8C0lyzvy3lDCDvCkQiUPeUvsSY.p7b",
+          "storeFile": "signtrue/OpenHarmony.p12",
+          "storePassword": "000000168A1A331E474C3881B640FBC8FD05E3FEF25B2F64E5C45775988D3A663B1487C7E776",
+          "keyAlias": "openharmony application release",
+          "keyPassword": "00000016EC1E0DFCC89A4B2BB3B41119EB39BF818146DBFA1F7F8C991613768E9BA29F050519",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "/storage/Users/currentUser/appdata/el2/base/com.huawei.devecostudio/files/ohos/config/default_paimontXi11CL6m5_f7JzJg8C0lyzvy3lDCDvCkQiUPeUvsSY.p12"
-        },
-        "type": "HarmonyOS"
+          "profile": "signtrue/top.ystyle.ohos.paimon.p7b",
+          "certpath": "signtrue/OpenHarmony.cer"
+        }
       }
     ],
     "products": [
       {
         "name": "default",
         "signingConfig": "default",
-        "compatibleSdkVersion": "6.0.2(22)",
-        "runtimeOS": "HarmonyOS",
+        "compatibleSdkVersion": 23,
+        "compileSdkVersion": 23,
+        "targetSdkVersion": 23,
+        "runtimeOS": "OpenHarmony",
         "buildOption": {
           "strictMode": {
             "caseSensitiveCheck": true,
