@@ -1,174 +1,171 @@
-import webview from '@ohos.web.webview'
+import webview from '@ohos.web.webview';
 import window from '@ohos.window';
 import deviceInfo from '@ohos.deviceInfo';
 import { BusinessError } from '@ohos.base';
-import common from '@ohos.app.ability.common';
-import router from '@ohos.router';
-import { MobileUserAgent, PCUserAgent } from '../common'
+import { MobileUserAgent, PCUserAgent } from '../common';
 import { Game } from '../model/game';
 
-const ANIMATION_TIME: number = 300
+const LOAD_TIMEOUT: number = 10000;
 
-@Entry
 @Component
 struct GamePage {
-  // 页面状态
-  @State isLoading: boolean = true
-  @State hasError: boolean = false
-  @State errorMessage: string = ''
-  @State tipsindex: number = 0
-  @State game: Game = {} as Game
-  @State loadTimer: number = 0
-  @State webViewReady: boolean = false
+  @State isLoading: boolean = true;
+  @State hasError: boolean = false;
+  @State errorMessage: string = '';
+  @State game: Game = {} as Game;
+  @State webViewReady: boolean = false;
 
-  // 动画状态
-  @State transitionType: SlideEffect = SlideEffect.Top
+  private navPathStack: NavPathStack = new NavPathStack();
+  private loadTimer: number = 0;
+  private context: Context | undefined = this.getUIContext().getHostContext();
+  private userAgent: string = deviceInfo.deviceType === '2in1' ? PCUserAgent : MobileUserAgent;
+  controller: webview.WebviewController = new webview.WebviewController();
 
-  controller: webview.WebviewController = new webview.WebviewController()
-  context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext
-  private userAgent: string = deviceInfo.deviceType === '2in1' ? PCUserAgent : MobileUserAgent
-
-  pageTransition() {
-    // 快速滑入动画
-    PageTransitionEnter({ duration: ANIMATION_TIME, curve: Curve.EaseInOut })
-      .slide(this.transitionType)
-
-    // 快速滑出动画
-    PageTransitionExit({ duration: ANIMATION_TIME, curve: Curve.EaseInOut })
-      .slide(this.transitionType)
+  private initializeDestination(context: NavDestinationContext): void {
+    this.navPathStack = context.pathStack;
+    this.game = context.pathInfo.param as Game;
+    if (!this.game || !this.game.url) {
+      this.hasError = true;
+      this.errorMessage = '游戏参数无效，无法加载页面';
+      return;
+    }
+    this.enterGameWindow();
+    this.startLoadTimeout();
+    console.info('游戏页面初始化完成:', this.game.name, this.game.url);
   }
 
-  onPageShow() {
-    if (this.game.tips && this.game.tips.length > 0) {
-      let index = Math.random() * 100 % this.game.tips.length
-      this.tipsindex = Number(index.toFixed(0))
-    }
-
-    // 设置超时机制
+  private startLoadTimeout(): void {
+    this.clearLoadTimeout();
     this.loadTimer = setTimeout(() => {
       if (this.isLoading) {
-        console.log('WebView加载超时，自动显示内容')
-        this.isLoading = false
-        this.webViewReady = true
+        console.info('WebView加载超时，自动显示内容');
+        this.isLoading = false;
+        this.webViewReady = true;
       }
-    }, 10000) // 10秒超时
+    }, LOAD_TIMEOUT);
   }
 
-  aboutToDisappear() {
-    if (this.loadTimer) {
-      clearTimeout(this.loadTimer)
+  private clearLoadTimeout(): void {
+    if (this.loadTimer !== 0) {
+      clearTimeout(this.loadTimer);
+      this.loadTimer = 0;
     }
-
-    window.getLastWindow(this.context, (err, current) => {
-      if (deviceInfo.deviceType === '2in1') {
-        current.setWindowDecorVisible(true)
-        current.recover().catch((e: BusinessError) => console.error('recover failed', e))
-      } else if (deviceInfo.deviceType === 'phone' || deviceInfo.deviceType === 'tablet') {
-        current.setPreferredOrientation(window.Orientation.PORTRAIT)
-      }
-    })
   }
 
-  aboutToAppear() {
-    const params = router.getParams() as Record<string, string | number | SlideEffect | Game>;
-    this.transitionType = params.type as SlideEffect;
-    this.game = params.data as Game;
-
+  private enterGameWindow(): void {
+    if (this.context === undefined) {
+      return;
+    }
     window.getLastWindow(this.context, (err, current) => {
-      current.setWindowSystemBarEnable([])
-      current.setWindowLayoutFullScreen(true)
-
+      if (err.code) {
+        console.error('获取游戏窗口失败:', err);
+        return;
+      }
+      current.setWindowSystemBarEnable([]);
+      current.setWindowLayoutFullScreen(true);
       if (deviceInfo.deviceType === '2in1') {
-        current.setWindowDecorVisible(false)
+        current.setWindowDecorVisible(false);
         current.maximize(window.MaximizePresentation.ENTER_IMMERSIVE_DISABLE_TITLE_AND_DOCK_HOVER)
-          .catch((e: BusinessError) => console.error('maximize failed', e))
+          .catch((error: BusinessError) => console.error('进入沉浸模式失败:', error));
       } else if (deviceInfo.deviceType === 'phone' || deviceInfo.deviceType === 'tablet') {
-        current.setPreferredOrientation(window.Orientation.LANDSCAPE)
+        current.setPreferredOrientation(window.Orientation.LANDSCAPE);
       }
-    })
+    });
+  }
 
-    if (this.game.nickname && this.game.tips && this.game.tips.length > 0) {
-      router.showAlertBeforeBackPage({
-        message: this.game.nickname + ', ' + this.game.tips[this.tipsindex]
-      })
+  private restoreWindow(): void {
+    if (this.context === undefined) {
+      return;
     }
+    window.getLastWindow(this.context, (err, current) => {
+      if (err.code) {
+        console.error('恢复窗口失败:', err);
+        return;
+      }
+      current.setWindowSystemBarEnable(['status', 'navigation']);
+      current.setWindowLayoutFullScreen(false);
+      if (deviceInfo.deviceType === '2in1') {
+        current.setWindowDecorVisible(true);
+        current.recover().catch((error: BusinessError) => console.error('恢复窗口失败:', error));
+      } else if (deviceInfo.deviceType === 'phone' || deviceInfo.deviceType === 'tablet') {
+        current.setPreferredOrientation(window.Orientation.PORTRAIT);
+      }
+    });
+  }
 
-    console.log('游戏页面初始化完成:', this.game.name, this.game.url)
+  private leaveGame(): boolean {
+    this.navPathStack.pop();
+    return true;
   }
 
   build() {
-    Stack() {
-      if (this.hasError) {
-        // 错误状态
-        Column() {
-          Text('加载失败')
-            .fontSize(20)
-            .fontWeight(FontWeight.Bold)
-            .margin({ bottom: 10 })
-          Text(this.errorMessage)
-            .fontSize(14)
-            .textAlign(TextAlign.Center)
-            .margin({ bottom: 20 })
-          Button('重试')
-            .onClick(() => {
-              this.hasError = false
-              this.isLoading = true
-              this.controller.refresh()
-            })
-        }
-        .width('100%')
-        .height('100%')
-        .justifyContent(FlexAlign.Center)
-        .backgroundColor(0xF5F5F5)
-        .padding(20)
-      } else {
-        // 游戏内容 - 始终显示WebView
-        Row() {
+    NavDestination() {
+      Stack() {
+        if (this.hasError) {
           Column() {
-            Web({ src: this.game.url, controller: this.controller })
-              .fileAccess(true)
-              .javaScriptAccess(true)
-              .domStorageAccess(true)
-              .databaseAccess(true)
-              .mixedMode(MixedMode.All)
-              .onlineImageAccess(true)
-              .zoomAccess(true)
-              .pinchSmooth(true)
-              .backgroundColor(0xFFFFFF)
-              .userAgent(this.userAgent)
-              .onPageBegin(() => {
-                console.log('页面开始加载:', this.game.url)
-                this.isLoading = false
-                this.hasError = false
-                this.webViewReady = true
-
-                // 清理超时定时器
-                if (this.loadTimer) {
-                  clearTimeout(this.loadTimer)
-                  this.loadTimer = 0
-                }
-              })
-              .onPageEnd(() => {
-                console.log('页面加载完成:', this.game.url)
-                this.isLoading = false
-                this.webViewReady = true
-              })
-              .onHttpErrorReceive((event) => {
-                console.error('HTTP错误:', event.response.getResponseCode(), event.response.getReasonMessage())
-                if (!this.webViewReady) {
-                  this.hasError = true
-                  this.errorMessage = '页面加载失败，请检查网络连接'
-                }
-              })
+            Text('加载失败').fontSize(20).fontWeight(FontWeight.Bold).margin({ bottom: 10 });
+            Text(this.errorMessage).fontSize(14).textAlign(TextAlign.Center).margin({ bottom: 20 });
+            Button('重试').onClick(() => {
+              this.hasError = false;
+              this.isLoading = true;
+              this.controller.refresh();
+            });
           }
           .width('100%')
           .height('100%')
+          .justifyContent(FlexAlign.Center)
+          .backgroundColor(0xF5F5F5)
+          .padding(20);
+        } else {
+          Web({ src: this.game.url, controller: this.controller })
+            .width('100%')
+            .height('100%')
+            .fileAccess(true)
+            .javaScriptAccess(true)
+            .domStorageAccess(true)
+            .databaseAccess(true)
+            .mixedMode(MixedMode.All)
+            .onlineImageAccess(true)
+            .zoomAccess(true)
+            .pinchSmooth(true)
+            .backgroundColor(0xFFFFFF)
+            .userAgent(this.userAgent)
+            .onPageBegin(() => {
+              console.info('页面开始加载:', this.game.url);
+              this.isLoading = false;
+              this.hasError = false;
+              this.webViewReady = true;
+              this.clearLoadTimeout();
+            })
+            .onPageEnd(() => {
+              console.info('页面加载完成:', this.game.url);
+              this.isLoading = false;
+              this.webViewReady = true;
+            })
+            .onHttpErrorReceive((event) => {
+              console.error('HTTP错误:', event.response.getResponseCode(), event.response.getReasonMessage());
+              if (!this.webViewReady) {
+                this.hasError = true;
+                this.errorMessage = '页面加载失败，请检查网络连接';
+              }
+            });
         }
-        .height('100%')
-        .backgroundColor(0xFFFFFF)
       }
+      .width('100%')
+      .height('100%');
     }
-    .width('100%')
-    .height('100%')
+    .hideTitleBar(true)
+    .onReady((context: NavDestinationContext) => this.initializeDestination(context))
+    .onBackPressed(() => this.leaveGame())
+    .onDisAppear(() => {
+      this.clearLoadTimeout();
+      this.restoreWindow();
+    });
   }
+}
+
+
+@Builder
+export function GamePageBuilder(){
+  GamePage()
 }

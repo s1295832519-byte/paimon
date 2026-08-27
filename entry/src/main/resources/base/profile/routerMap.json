@@ -1,5 +1,9 @@
 {
   "routerMap": [
-
+    {
+      "name": "GamePage",
+      "pageSourceFile": "src/main/ets/pages/Game.ets",
+      "buildFunction": "GamePageBuilder"
+    }
   ]
 }
