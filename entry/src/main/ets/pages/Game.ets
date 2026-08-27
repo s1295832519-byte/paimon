@@ -5,7 +5,7 @@ import { BusinessError } from '@ohos.base';
 import common from '@ohos.app.ability.common';
 import router from '@ohos.router';
 import { MobileUserAgent, PCUserAgent } from '../common'
-import { Game } from '../model/model';
+import { Game } from '../model/game';
 
 const ANIMATION_TIME: number = 300
 

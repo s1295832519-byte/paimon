@@ -12,6 +12,7 @@
     "deliveryWithInstall": true,
     "installationFree": false,
     "pages": "$profile:main_pages",
+    "routerMap": "$profile:routerMap",
     "requestPermissions": [
       {
         "name" : "ohos.permission.INTERNET",
@@ -43,7 +44,7 @@
         "label": "$string:EntryAbility_label",
         "startWindowIcon": "$media:startIcon",
         "startWindowBackground": "$color:start_window_background",
-        "orientation": "landscape",
+        "orientation": "auto_rotation",
         "exported": true,
         "skills": [
           {

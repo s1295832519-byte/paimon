@@ -3,41 +3,37 @@ import window from '@ohos.window';
 import deviceInfo from '@ohos.deviceInfo';
 import { BusinessError } from '@ohos.base';
 import common from '@ohos.app.ability.common';
-import { Game } from '../model//model'
+import { Game } from '../model/game'
+import {GameListModel}from "../viewModel/gameList"
+import { PermissionUtil } from '../utils/PermissionUtil';
+import { Permissions } from '@ohos.privacyManager';
+import { UIContext } from '@kit.ArkUI';
+import { GlobalContext } from '../utils/GlobalContext';
+import { CommonConstants } from '../common/CommonConstants';
 
 @Entry
 @Component
 struct Index {
   @State isDarkMode: boolean = false
   @State refreshKey: number = 0
+  private navPath:NavPathStack = new NavPathStack()
+  uiContext:UIContext = this.getUIContext()
+  context :Context | undefined = this.uiContext.getHostContext()
+
+  private permissions:Permissions[] = ["ohos.permission.INTERNET"]
+
+  getInternetPermission(){
+    if(this.context == undefined){
+      return
+    }
+    let hasInternet =  PermissionUtil.checkPermissions(this.permissions,this.context)
+    if(!hasInternet){
+      PermissionUtil.requestPermissions(this.permissions,this.context)
+    }
+  }
 
   // 游戏列表数据
-  private gameList: Game[] = [
-    {
-      name: '原神',
-      url: 'https://ys.mihoyo.com/cloud',
-      icon: $r('app.media.genshin'),
-      nickname: '旅行者',
-      tips: [
-        '你要休息了吗？ 尘歌壶里的菜记得收哦！',
-        '你要休息了吗？ 每日任务交了吗？',
-        '你要休息了吗？ 今天的树脂用完了吗？',
-        '你要休息了吗？ 今天有和壶里的大家说说话吗？'
-      ]
-    },
-    {
-      name: '崩坏·星穹铁道',
-      url: 'https://sr.mihoyo.com/cloud',
-      icon: $r('app.media.star_rail'),
-      nickname: '开拓者',
-      tips: [
-        '你要休息了帕？',
-        '开拓者，今天的模拟宇宙打了没有？',
-        '开拓者，今天的委托完成了吗？'
-      ]
-    }
-  ]
-  context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext
+  private gameList: Game[] = []
 
   onPageShow() {
     if (!canIUse('SystemCapability.Web.Webview.Core')) {
@@ -54,6 +50,15 @@ struct Index {
         current.setPreferredOrientation(window.Orientation.PORTRAIT)
       }
     })
+  }
+
+  aboutToAppear(): void {
+    this.gameList = GameListModel.getGameList()
+
+    GlobalContext.getInstance().setContext(CommonConstants.UI_CONTEXT,this.uiContext)
+
+    this.getInternetPermission()
+
   }
 
   // 游戏卡片点击事件
@@ -106,8 +111,7 @@ struct Index {
   }
 
   build() {
-    Column() {
-      Navigation() {
+      Navigation(this.navPath) {
         // 游戏列表
         Column({ space: 24 }) {
           ForEach(this.gameList, (item: Game, index: number) => {
@@ -121,10 +125,8 @@ struct Index {
       .title('游戏列表')
       .titleMode(NavigationTitleMode.Free)
       .mode(NavigationMode.Stack)
-      .hideBackButton(true)
-    }
-    .width('100%')
-    .height('100%')
-    .backgroundColor('#F5F5F5')
+      .width('100%')
+      .height('100%')
+      .backgroundColor('#F5F5F5')
   }
 }
